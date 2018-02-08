@@ -1,19 +1,64 @@
 1. เปลี่ยนชื่อไฟล์ .env-sample เป็น .env และเปลี่ยนค่าต่างๆภายในนั้น
 
-2. Build Dockerfile ทั้งหมด
-	sudo docker-compose build
+2. ติดตั้ง reactql ด้วย 
+```bash
+git clone https://github.com/reactql/kit.git ./web/reactql
+```
+  ปรับแก้อะไรไปบ้าง ดูตามนี้เลย
+  
+  2.1 web/api/reactql/kit/webpack/server_prod.js
+```javascript
+#L68: BASE_URL: JSON.stringify(process.env.BASE_URL || '/'), //เพิ่มบรรทัดนี้เข้าไปใต้บรรทัดของ SSL_PORT
+```
 
-3. Start container ทั้งหมด
-	sudo docker-compose up -d
+  2.2 web/api/reactql/kit/webpack/browser_prod.js
+```javascript
+#L61: filename: 'bundle/assets/css/style.[contenthash].css', //เพิ่ม bundle/ ไปด้านหน้า
+#L81: filename: 'bundle/[name].[chunkhash].js',
+#L82: chunkFilename: 'bundle/[name].[chunkhash].js',
+#L105: BASE_URL: JSON.stringify(process.env.BASE_URL || '/'), //เพิ่มบรรทัดนี้เข้าไปใต้บรรทัดของ SSL_PORT
+#L190: to: join(PATHS.public, 'static'), //เพิ่มบรรทัดนี้เข้าไปใน CopyWebpackPlugin ใต้บรรทัด from: PATHS.static,
+```
 
-4. ติดตั้ง Yii2
-	4.1 Clone Yii2-Advanced template ลงใน /web/yii2
-		git clone https://github.com/yiisoft/yii2-app-advanced.git ./web/yii2
-	4.2 Initial Yii2 project เลือก 0 สำหรับ Development หรือ 1 สำหรับ Production
-		sudo docker-compose run --rm php ./init
-	4.3 ติดตั้ง dependencies ทั้งหมด
-		sudo docker-compose run --rm php composer install
-	4.4 เปลี่ยนค่าการเชื่อมต่อฐานข้อมูลในไฟล์ web/yii2/common/config/main-local.php
+  2.3 web/api/reactql/kit/entry/browser.js
+```javascript
+#L22: import { BrowserRouter as Router } from 'react-router-dom';
+#L76: <Router history={history} basename={process.env.BASE_URL}> // เพิ่ม basename={process.env.BASE_URL}
+```
+
+  2.4 web/api/reactql/kit/entry/server.js
+```javascript
+#L161: <StaticRouter location={ctx.request.url} context={routeContext} basename={process.env.BASE_URL}>  // เพิ่ม basename={process.env.BASE_URL}
+```
+
+  2.5 web/api/reactql/kit/views/ssr.js
+```javascript
+#L21: {helmet.base.toString() ? helmet.base.toComponent() : <base href={`${process.env.BASE_URL}/`} />} // เปลี่ยนจาก <base href="/" /> เป็น <base href={`${process.env.BASE_URL}/`} />
+```
+
+  2.6 web/api/reactql/kit/webpack/base.js
+```javascript
+#L66: name: 'bundle/assets/fonts/[name].[hash].[ext]', //เพิ่ม bundle/ ไปด้านหน้า
+#L79: name: 'bundle/assets/img/[name].[hash].[ext]',
+```
+
+3. ติดตั้ง Yii2
+
+  3.1 Clone Yii2-Advanced template ลงใน /web/yii2
+```bash
+git clone https://github.com/yiisoft/yii2-app-advanced.git ./web/yii2
+```
+
+  3.2 Initial Yii2 project เลือก 0 สำหรับ Development หรือ 1 สำหรับ Production
+```bash
+sudo docker-compose run --rm php ./init
+```
+
+  3.3 ติดตั้ง dependencies ทั้งหมด
+```bash
+sudo docker-compose run --rm php composer install
+```
+  3.4 เปลี่ยนค่าการเชื่อมต่อฐานข้อมูลในไฟล์ web/yii2/common/config/main-local.php
 ```php
 return [
     'components' => [
@@ -31,44 +76,15 @@ return [
 ];
 ```
   4.5 Migrate database
-```
+```bash
 sudo docker-compose run --rm php ./yii migrate
 ```
 
-5. ติดตั้ง reactql ด้วย 
-```
-git clone https://github.com/reactql/kit.git ./web/reactql
-```
-  ปรับแก้อะไรไปบ้าง ดูตามนี้เลย
-  5.1 web/api/reactql/kit/webpack/server_prod.js
-    #L68: BASE_URL: JSON.stringify(process.env.BASE_URL || '/'), //เพิ่มบรรทัดนี้เข้าไปใต้บรรทัดของ SSL_PORT
+5. Build ด้วยคำสั่ง sudo docker-compose build
 
-  5.2 web/api/reactql/kit/webpack/browser_prod.js
-    #L61: filename: 'bundle/assets/css/style.[contenthash].css', //เพิ่ม bundle/ ไปด้านหน้า
-    #L81: filename: 'bundle/[name].[chunkhash].js',
-    #L82: chunkFilename: 'bundle/[name].[chunkhash].js',
-    #L105: BASE_URL: JSON.stringify(process.env.BASE_URL || '/'), //เพิ่มบรรทัดนี้เข้าไปใต้บรรทัดของ SSL_PORT
-    #L190: to: join(PATHS.public, 'static'), //เพิ่มบรรทัดนี้เข้าไปใน CopyWebpackPlugin ใต้บรรทัด from: PATHS.static,
+6. Run ด้วยคำสั่ง sudo docker-compose up -d
 
-  5.3 web/api/reactql/kit/entry/browser.js
-    #L22: import { BrowserRouter as Router } from 'react-router-dom';
-    #L76: <Router history={history} basename={process.env.BASE_URL}> // เพิ่ม basename={process.env.BASE_URL}
-
-  5.4 web/api/reactql/kit/entry/server.js
-    #L161: <StaticRouter location={ctx.request.url} context={routeContext} basename={process.env.BASE_URL}>  // เพิ่ม basename={process.env.BASE_URL}
-
-  5.5 web/api/reactql/kit/views/ssr.js
-    #L21: {helmet.base.toString() ? helmet.base.toComponent() : <base href={`${process.env.BASE_URL}/`} />} // เปลี่ยนจาก <base href="/" /> เป็น <base href={`${process.env.BASE_URL}/`} />
-
-  5.6 web/api/reactql/kit/webpack/base.js
-    #L66: name: 'bundle/assets/fonts/[name].[hash].[ext]', //เพิ่ม bundle/ ไปด้านหน้า
-    #L79: name: 'bundle/assets/img/[name].[hash].[ext]',
-
-6. Build ด้วยคำสั่ง sudo docker-compose build
-
-7. Run ด้วยคำสั่ง sudo docker-compose up -d
-
-การรันข้แ 6-7 อาจใช้เวลานาน หากต้องการรวบในการสั่งทีเดียวก็ให้ใช้คำสั่งนี้ sudo docker-compose build && sudo docker-compose up -d
+การรันข้แ 5-6 อาจใช้เวลานาน หากต้องการรวบในการสั่งทีเดียวก็ให้ใช้คำสั่งนี้ sudo docker-compose build && sudo docker-compose up -d
 
 --------------------------------------------------
 
