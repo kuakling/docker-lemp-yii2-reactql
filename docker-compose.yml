@@ -1,0 +1,127 @@
+version: '3'
+services:
+  web:
+    image: nginx:alpine
+    container_name: web
+    volumes:
+      - "./etc/nginx/default.conf:/etc/nginx/conf.d/default.conf"
+      - "./etc/nginx/locations:/etc/nginx/conf.d/locations"
+  #     - "./etc/ssl:/etc/ssl"
+      - "./web/yii2:/var/www/html"
+      - "./etc/nginx/default.template.conf:/etc/nginx/conf.d/default.template"
+      - "./web/reactql/dist/public:/var/www/reactql"
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - NGINX_HOST=${NGINX_HOST}
+    command: /bin/sh -c "envsubst '$$NGINX_HOST' < /etc/nginx/conf.d/default.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"
+    restart: always
+    depends_on:
+      - php
+      - mysqldb
+      - mongodb
+      - api
+      - reactql
+
+  php:
+    build: ./builds/php
+    container_name: php
+    restart: always
+    volumes:
+      - "./etc/php/php.ini:/usr/local/etc/php/conf.d/php.ini"
+      - "./web/yii2:/var/www/html"
+
+  api:
+    build: ./web/api
+    container_name: api
+    volumes:
+      - ./web/api/app/src:/app/src
+
+  reactql:
+    build: ./web/reactql
+    container_name: reactql
+    volumes:
+      - ./web/reactql:/src
+      - /src/node_modules
+    # ports:
+    #   - 4000:4000
+    environment:
+      HOST: "0.0.0.0"
+      BROWSER_HOST: "0.0.0.0"
+      BASE_URL: ${REACTQL_BASE_URL}
+
+  myadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: phpmyadmin
+    ports:
+      - "8080:80"
+    environment:
+      - PMA_ARBITRARY=1
+      - PMA_HOST=${MYSQL_HOST}
+    restart: always
+    depends_on:
+      - mysqldb
+
+  mysqldb:
+    image: mariadb:latest
+    container_name: ${MYSQL_HOST}
+    restart: always
+    env_file:
+      - ".env"
+    environment:
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+    # ports:
+    #   - "8989:3306"
+    volumes:
+      - "./db/mysql/initdb/:/docker-entrypoint-initdb.d"
+      - "./db/mysql/data:/var/lib/mysql"
+
+  mongodb:
+    image: mongo:latest
+    container_name: "mongodb"
+    environment:
+      - MONGO_DATA_DIR=/data/db
+      - MONGO_LOG_DIR=/dev/null
+    # ports:
+    #   - 27017:27017
+    volumes:
+      - "./db/mongodb/data/db:/data/db"
+    command: mongod --smallfiles --logpath=/dev/null
+
+  memcached:
+    image: memcached:alpine
+    container_name: memcached
+    # expose:
+    #   - "11211"
+    # ports:
+    #   - "11211:11211"
+
+
+
+
+
+  templates:
+    image: portainer/templates
+    container_name: "portainer-templates"
+
+  portainer:
+    image: portainer/portainer
+    container_name: "portainer-app"
+    #Automatically choose 'Manage the Docker instance where Portainer is running' by adding <--host=unix:///var/run/docker.sock> to the command
+    command: --templates http://templates/templates.json
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /opt/portainer/data:/data
+    ports:
+      - "8888:9000"
+
+  watchtower:
+    image: v2tec/watchtower
+    container_name: "portainer-watchtower"
+    command: --cleanup portainer-app portainer-watchtower portainer/templates
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
