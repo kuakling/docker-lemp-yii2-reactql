@@ -2,4 +2,6 @@ web/yii2
 
 web/reactql
 
+db/mysql/data
+
 .env

@@ -25,7 +25,10 @@ services:
       - reactql
 
   php:
-    build: ./builds/php
+    build: 
+      context: ./builds/php
+      args:
+        - COMPOSER_GIT_TOKEN=${COMPOSER_GIT_TOKEN}
     container_name: php
     restart: always
     volumes:

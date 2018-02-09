@@ -81,7 +81,7 @@ RUN php -r "readfile('https://getcomposer.org/installer');" | php -- --install-d
 
 ARG COMPOSER_GIT_TOKEN
 ENV COMPOSER_GIT_TOKEN "${COMPOSER_GIT_TOKEN}"
-RUN composer config -g github-oauth.github.com ${COMPOSER_GIT_TOKEN}}
+RUN composer config -g github-oauth.github.com ${COMPOSER_GIT_TOKEN}
 
 
 EXPOSE 9000
