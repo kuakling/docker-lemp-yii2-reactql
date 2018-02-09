@@ -78,7 +78,7 @@ return [
 ];
 ```
 
-  5.6 เปลี่ยน baseUrl ของ frontend ในไฟล์ web/yii2/frontend/config/main.php
+  5.5 เปลี่ยน baseUrl ของ frontend ในไฟล์ web/yii2/frontend/config/main.php
 ```php
 return [
     //...
@@ -93,7 +93,7 @@ return [
 ];
 ```
 
-  5.7 เปลี่ยน baseUrl ของ backend ในไฟล์ web/yii2/backend/config/main.php
+  5.6 เปลี่ยน baseUrl ของ backend ในไฟล์ web/yii2/backend/config/main.php
 ```php
 return [
     //...
@@ -109,28 +109,34 @@ return [
 ];
 ```
 
-  5.8 Migrate database
+  5.7 Migrate database
 ```bash
 sudo docker-compose run --rm php ./yii migrate
 ```
 
-6. Build ด้วยคำสั่ง sudo docker-compose build
+6. Build ด้วยคำสั่ง
+```bash
+sudo docker-compose build
+```
 
 7. ในบางครั้ง ไฟล์ที่ถูก build ของ reactql จะถูกทับด้วยโฟลเดอร์เปล่าจากการที่ mount volume จาก container nginx ดังนั้นควรจะ build reactql อีกครั้งด้วยคำสั่ง
 ```bash
 sudo docker-compose run --rm reactql npm run build
 ```
 
-8. Run ด้วยคำสั่ง sudo docker-compose up -d
+8. สุดท้ายก็สั่งทำงานทุก containers ที่อยู่ใน docker-compose ได้เลย 
+```bash
+sudo docker-compose up -d
+```
 
 
 --------------------------------------------------
+เมื่อ containers ถูกรันขึ้นทั้งหมดก็ได้ได้ url ตามนี้
 
-Routes
 1. http://localhost		            = nginx yii2 frontend
 2. http://localhost/office	      = nginx yii2 backend
 3. http://localhost/phpmyadmin/	  = phpmyadmin
-4. http://localhost/api		        = nodejs restfull
+4. http://localhost/api		        = nodejs restful api
 5. http://localhost/ssr           = nodejs react universal by reactql.org
 6. http://localhost:8888	        = manage docker on web base
 
@@ -145,11 +151,13 @@ Backgrounds
 
 
 
-logs.
+## Logs.
 เนื่องจาก reactql ถูกออกแบบมาให้รันภายใต้ root url ถึงแม้เราจะใส่ basename ใน BrowserRouter แล้วก็ตาม แต่ไฟล์ที่ถูก Build ก็ยังยังถูเรียกจาก root url อยู่ดี แต่ในความต้องการของผู้จัดทำต้องการให้มันการเรียกไฟล์ดังกล่าวภายใต้ /ssr/bundle สำหรับไฟล์ที่ build และ /ssr/static สำหรับไฟลที่ถูกคัดลองมาจาก [root]/static จึงได้ใช้วิธีการดังนี้
   1. สร้าง location /ssr แล้วให้ proxy_pass ไปที่ container ของ reactql
-  2. ปรับโค๊ดเพื่อ reactql มัน build ลงไปในโฟลเดอร์ที่ซ้อนอยูใน public อีกที (ในที่นี้ตั้งชื่อโฟลเดอร์ว่า bundle)
-  3. map volume โฟลเดอร์ public ให้เป็นโฟลเดอร์หนึงใน container ของ proxy ที่ไฟล์ docker-compose.yml
+  2. ปรับโค๊ด reactql ให้มี env เพิ่มขึ้นอีกตัวในชื่อ BASE_URL ในข้อ 4.1[L68], 4.2[L105] โดยเอาค่ามาจากตัวแปร REACTQL_BASE_URL ที่อยู่ในไฟล์ .env ทั้งนี้เพื่อนำค่านี้มาใช้เป็นชื่อ sub folder ของ reactql ในเว็บไซต์
+  3. นำ env.BASE_URL มาใส่ใน router ในข้อ 4.3, 4.4 และให้ html base url เป็นไปตามนั้นด้วย ในข้อ 4.5
+  3. ปรับโค๊ดเพื่อ reactql มัน build ลงไปในโฟลเดอร์ที่ซ้อนอยูใน public อีกที (ในที่นี้ตั้งชื่อโฟลเดอร์ว่า bundle) และให้ไฟล์ static อยูู่ในโฟลเดอร์ static ในข้อ 4.2[L190] เพื่อที่จะให้ nginx มา map url ไฟล์พวกนี้ไปให้บริการแทน koa2
+  5. map volume โฟลเดอร์ public ให้เป็นโฟลเดอร์หนึงใน container ของ proxy ที่ไฟล์ docker-compose.yml
 ```yaml
   web:
     ...
@@ -157,9 +165,9 @@ logs.
       ...
       - "./web/reactql/dist/public:/var/www/reactql"
 ```
-  4. แก้ไข config ของ nginx โดยเพิ่ม location /ssr/bundle มองไปไทีโฟลเดอร์ที่ map มาในข้อ 3.
+  6. แก้ไข config ของ nginx โดยเพิ่ม location /ssr/bundle มองไปไทีโฟลเดอร์ที่ map มาในข้อ 3.
   การกำหนดค่าของ proxy โดยให้ location /ssr/bundle ให้มองไปที่โฟลเดอร์ /var/www/html/reactql/bundle และ /ssr/static ให้มองไปที่โฟลเดอร์ /var/www/html/reactql/static
-  ```conf
+```conf
   # หากมีการเปลี่ยนชื่อ ssr (ซึงก็คงไม่มีไครใช้ชื่อนี้เนอะ) ในไฟล์ .env ไปเป็นชื่ออื่นก็ให้เปลี่ยน config ของ nginx ในนี้ตามไปด้วย
   location /ssr {
     proxy_pass http://reactql:4000;
@@ -177,6 +185,6 @@ logs.
   location /ssr/static {
     alias /var/www/reactql/static;
   }
-  ```
+```
 
-  เมื่อเสร็จ 4 ขั้นตอนนี้ เราก็จะมี url /ssr และ /ssr/bundle และ /ssr/static ถ้ามองผ่านๆ ก็เหมือน static ไฟล์ธรรมดาเนอะ แต่จริงๆ แล้ว /ssr จะถูกให้บริการโดย NodeJs + Koa2 แต่ /ssr/bundle และ /ssr/static จะถูกให้บริการด้วย nginx
+  เมื่อเสร็จทุกขั้นตอน เราก็จะมี url /ssr และ /ssr/bundle และ /ssr/static ถ้ามองผ่านๆ ก็เหมือน static ไฟล์ธรรมดาเนอะ แต่จริงๆ แล้ว /ssr จะถูกให้บริการโดย NodeJs + Koa2 แต่ /ssr/bundle และ /ssr/static จะถูกให้บริการด้วย nginx
