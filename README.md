@@ -77,16 +77,52 @@ return [
     ],
 ];
 ```
-  5.5 Migrate database
+
+  5.6 เปลี่ยน baseUrl ของ frontend ในไฟล์ web/yii2/frontend/config/main.php
+```php
+return [
+    //...
+    'components' => [
+        'request' => [
+            //...
+            'baseUrl' => '', //<--เพิ่มตรงนี้
+        ],
+        //...
+    ],
+    //...
+];
+```
+
+  5.7 เปลี่ยน baseUrl ของ backend ในไฟล์ web/yii2/backend/config/main.php
+```php
+return [
+    //...
+    'components' => [
+        'request' => [
+            //...
+            'baseUrl' => 'office', //<--เพิ่มตรงนี้
+            // ในที่นี้ใช้ชื่อ backend ว่า office หากต้องการใช้ใชื่ออื่นก็ต้องไปเปลี่ยน location ที่ไฟล์ [root]/etc/nginx/locations/backend.conf ด้วยนะ
+        ],
+        //...
+    ],
+    //...
+];
+```
+
+  5.8 Migrate database
 ```bash
 sudo docker-compose run --rm php ./yii migrate
 ```
 
 6. Build ด้วยคำสั่ง sudo docker-compose build
 
-7. Run ด้วยคำสั่ง sudo docker-compose up -d
+7. ในบางครั้ง ไฟล์ที่ถูก build ของ reactql จะถูกทับด้วยโฟลเดอร์เปล่าจากการที่ mount volume จาก container nginx ดังนั้นควรจะ build reactql อีกครั้งด้วยคำสั่ง
+```bash
+sudo docker-compose run --rm reactql npm run build
+```
 
-การรันข้แ 6-7 อาจใช้เวลานาน หากต้องการรวบในการสั่งทีเดียวก็ให้ใช้คำสั่งนี้ sudo docker-compose build && sudo docker-compose up -d
+8. Run ด้วยคำสั่ง sudo docker-compose up -d
+
 
 --------------------------------------------------
 
@@ -95,7 +131,7 @@ Routes
 2. http://localhost/office	      = nginx yii2 backend
 3. http://localhost/phpmyadmin/	  = phpmyadmin
 4. http://localhost/api		        = nodejs restfull
-5. http://localhost/ssr    = nodejs react universal by reactql.org
+5. http://localhost/ssr           = nodejs react universal by reactql.org
 6. http://localhost:8888	        = manage docker on web base
 
 Backgrounds
@@ -114,17 +150,17 @@ logs.
   1. สร้าง location /ssr แล้วให้ proxy_pass ไปที่ container ของ reactql
   2. ปรับโค๊ดเพื่อ reactql มัน build ลงไปในโฟลเดอร์ที่ซ้อนอยูใน public อีกที (ในที่นี้ตั้งชื่อโฟลเดอร์ว่า bundle)
   3. map volume โฟลเดอร์ public ให้เป็นโฟลเดอร์หนึงใน container ของ proxy ที่ไฟล์ docker-compose.yml
-    ```
-      web:
-        ...
-        volumes:
-          ...
-          - "./web/reactql/dist/public:/var/www/reactql"
-    ```
+```yaml
+  web:
+    ...
+    volumes:
+      ...
+      - "./web/reactql/dist/public:/var/www/reactql"
+```
   4. แก้ไข config ของ nginx โดยเพิ่ม location /ssr/bundle มองไปไทีโฟลเดอร์ที่ map มาในข้อ 3.
   การกำหนดค่าของ proxy โดยให้ location /ssr/bundle ให้มองไปที่โฟลเดอร์ /var/www/html/reactql/bundle และ /ssr/static ให้มองไปที่โฟลเดอร์ /var/www/html/reactql/static
-  ```
-  // หากมีการเปลี่ยนชื่อ ssr (ซึงก็คงไม่มีไครใช้ชื่อนี้เนอะ) ในไฟล์ .env ไปเป็นชื่ออื่นก็ให้เปลี่ยน config ของ nginx ในนี้ตามไปด้วย
+  ```conf
+  # หากมีการเปลี่ยนชื่อ ssr (ซึงก็คงไม่มีไครใช้ชื่อนี้เนอะ) ในไฟล์ .env ไปเป็นชื่ออื่นก็ให้เปลี่ยน config ของ nginx ในนี้ตามไปด้วย
   location /ssr {
     proxy_pass http://reactql:4000;
 
@@ -144,6 +180,3 @@ logs.
   ```
 
   เมื่อเสร็จ 4 ขั้นตอนนี้ เราก็จะมี url /ssr และ /ssr/bundle และ /ssr/static ถ้ามองผ่านๆ ก็เหมือน static ไฟล์ธรรมดาเนอะ แต่จริงๆ แล้ว /ssr จะถูกให้บริการโดย NodeJs + Koa2 แต่ /ssr/bundle และ /ssr/static จะถูกให้บริการด้วย nginx
-
-
-
