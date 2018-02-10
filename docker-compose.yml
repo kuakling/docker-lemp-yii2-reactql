@@ -62,6 +62,7 @@ services:
     environment:
       - PMA_ARBITRARY=1
       - PMA_HOST=${MYSQL_HOST}
+      # - PMA_ABSOLUTE_URI=/phpmyadmin/
     restart: always
     depends_on:
       - mysqldb

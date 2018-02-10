@@ -12,12 +12,12 @@ git clone https://github.com/yiisoft/yii2-app-advanced.git ./web/yii2
 
 4. แก้ไขโค๊ดของ reactql เพื่อให้สามารถรัยภายไต้ sub folder ได้
   
-  4.1 web/api/reactql/kit/webpack/server_prod.js
+  4.1 web/reactql/kit/webpack/server_prod.js
 ```javascript
 #L68: BASE_URL: JSON.stringify(process.env.BASE_URL || '/'), //เพิ่มบรรทัดนี้เข้าไปใต้บรรทัดของ SSL_PORT
 ```
 
-  4.2 web/api/reactql/kit/webpack/browser_prod.js
+  4.2 web/reactql/kit/webpack/browser_prod.js
 ```javascript
 #L61: filename: 'bundle/assets/css/style.[contenthash].css', //เพิ่ม bundle/ ไปด้านหน้า
 #L81: filename: 'bundle/[name].[chunkhash].js',
@@ -26,41 +26,48 @@ git clone https://github.com/yiisoft/yii2-app-advanced.git ./web/yii2
 #L190: to: join(PATHS.public, 'static'), //เพิ่มบรรทัดนี้เข้าไปใน CopyWebpackPlugin ใต้บรรทัด from: PATHS.static,
 ```
 
-  4.3 web/api/reactql/kit/entry/browser.js
+  4.3 web/reactql/kit/entry/browser.js
 ```javascript
 #L22: import { BrowserRouter as Router } from 'react-router-dom';
 #L76: <Router history={history} basename={process.env.BASE_URL}> // เพิ่ม basename={process.env.BASE_URL}
 ```
 
-  4.4 web/api/reactql/kit/entry/server.js
+  4.4 web/reactql/kit/entry/server.js
 ```javascript
 #L161: <StaticRouter location={ctx.request.url} context={routeContext} basename={process.env.BASE_URL}>  // เพิ่ม basename={process.env.BASE_URL}
 ```
 
-  4.5 web/api/reactql/kit/views/ssr.js
+  4.5 web/reactql/kit/views/ssr.js
 ```javascript
 #L21: {helmet.base.toString() ? helmet.base.toComponent() : <base href={`${process.env.BASE_URL}/`} />} // เปลี่ยนจาก <base href="/" /> เป็น <base href={`${process.env.BASE_URL}/`} />
 ```
 
-  4.6 web/api/reactql/kit/webpack/base.js
+  4.6 web/reactql/kit/webpack/base.js
 ```javascript
 #L66: name: 'bundle/assets/fonts/[name].[hash].[ext]', //เพิ่ม bundle/ ไปด้านหน้า
 #L79: name: 'bundle/assets/img/[name].[hash].[ext]',
 ```
 
-5. init project และปรับแก้โค๊ดของ Yii2
+5. Build containers ทั้งหมดก่อนด้วยคำสั่ง
+```bash
+sudo docker-compose build
+```
 
-  5.1 Initial Yii2 project เลือก 0 สำหรับ Development หรือ 1 สำหรับ Production
+6. init project และปรับแก้โค๊ดของ Yii2
+
+  6.1 Initial Yii2 project เลือก 0 สำหรับ Development หรือ 1 สำหรับ Production
 ```bash
 sudo docker-compose run --rm php ./init
 ```
 
-  5.2 ติดตั้ง dependencies ทั้งหมด
+  6.2 ติดตั้ง dependencies ทั้งหมด
 ```bash
 sudo docker-compose run --rm php composer install
 ```
 
-  5.4 เปลี่ยนค่าการเชื่อมต่อฐานข้อมูลในไฟล์ web/yii2/common/config/main-local.php
+  ระหว่างรอข้อ 6.2 ซึ่งใช้เวลานานพอสมควร เราก็มาปรับโค๊ดใน Yii2 พลางๆ
+
+  6.3 เปลี่ยนค่าการเชื่อมต่อฐานข้อมูลในไฟล์ web/yii2/common/config/main-local.php
 ```php
 return [
     'components' => [
@@ -78,7 +85,7 @@ return [
 ];
 ```
 
-  5.5 เปลี่ยน baseUrl ของ frontend ในไฟล์ web/yii2/frontend/config/main.php
+  6.4 เปลี่ยน baseUrl ของ frontend ในไฟล์ web/yii2/frontend/config/main.php
 ```php
 return [
     //...
@@ -88,20 +95,11 @@ return [
             'baseUrl' => '', //<--เพิ่มตรงนี้
         ],
         //...
-    ],
-    //...
-];
-```
-
-  5.6 เปลี่ยน baseUrl ของ backend ในไฟล์ web/yii2/backend/config/main.php
-```php
-return [
-    //...
-    'components' => [
-        'request' => [
-            //...
-            'baseUrl' => 'office', //<--เพิ่มตรงนี้
-            // ในที่นี้ใช้ชื่อ backend ว่า office หากต้องการใช้ใชื่ออื่นก็ต้องไปเปลี่ยน location ที่ไฟล์ [root]/etc/nginx/locations/backend.conf ด้วยนะ
+        'urlManager' => [
+            'enablePrettyUrl' => true,
+            'showScriptName' => false,
+            'rules' => [
+            ],
         ],
         //...
     ],
@@ -109,14 +107,27 @@ return [
 ];
 ```
 
-  5.7 Migrate database
-```bash
-sudo docker-compose run --rm php ./yii migrate
-```
-
-6. Build ด้วยคำสั่ง
-```bash
-sudo docker-compose build
+  6.5 เปลี่ยน baseUrl ของ backend ในไฟล์ web/yii2/backend/config/main.php
+```php
+return [
+    //...
+    'components' => [
+        'request' => [
+            //...
+            'baseUrl' => '/office', //<--เพิ่มตรงนี้
+            // ในที่นี้ใช้ชื่อ backend ว่า office หากต้องการใช้ใชื่ออื่นก็ต้องไปเปลี่ยน location ที่ไฟล์ [root]/etc/nginx/locations/backend.conf ด้วยนะ
+        ],
+        //...
+        'urlManager' => [
+            'enablePrettyUrl' => true,
+            'showScriptName' => false,
+            'rules' => [
+            ],
+        ],
+        //......
+    ],
+    //...
+];
 ```
 
 7. ในบางครั้ง ไฟล์ที่ถูก build ของ reactql จะถูกทับด้วยโฟลเดอร์เปล่าจากการที่ mount volume จาก container nginx ดังนั้นควรจะ build reactql อีกครั้งด้วยคำสั่ง
@@ -124,18 +135,22 @@ sudo docker-compose build
 sudo docker-compose run --rm reactql npm run build
 ```
 
-8. สุดท้ายก็สั่งทำงานทุก containers ที่อยู่ใน docker-compose ได้เลย 
+8. สั่งทำงานทุก containers ที่อยู่ใน docker-compose ได้เลย 
 ```bash
 sudo docker-compose up -d
 ```
 
+9. Migrate database ให้ Yii2
+```bash
+sudo docker-compose run --rm php ./yii migrate
+```
 
 --------------------------------------------------
 เมื่อ containers ถูกรันขึ้นทั้งหมดก็ได้ได้ url ตามนี้
 
 1. http://localhost		            = nginx yii2 frontend
 2. http://localhost/office	      = nginx yii2 backend
-3. http://localhost/phpmyadmin/	  = phpmyadmin
+3. http://localhost:8080	        = phpmyadmin
 4. http://localhost/api		        = nodejs restful api
 5. http://localhost/ssr           = nodejs react universal by reactql.org
 6. http://localhost:8888	        = manage docker on web base
